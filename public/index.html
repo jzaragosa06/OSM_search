@@ -42,6 +42,32 @@
         button:hover {
             background-color: #0056b3;
         }
+
+        #results-list {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        #results-list h3 {
+            margin-top: 0;
+        }
+
+        #results-list ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #results-list li {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+        }
+
+        #results-list li:hover {
+            background-color: #e9ecef;
+        }
     </style>
 </head>
 
@@ -61,6 +87,11 @@
 
     <div id="map"></div>
 
+    <div id="results-list">
+        <h3>Search Results</h3>
+        <ul id="results-items"></ul>
+    </div>
+
     <!-- Leaflet JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
@@ -76,11 +107,13 @@
 
         // Store markers layer
         let markersLayer = L.layerGroup().addTo(map);
+        let markers = [];
 
         async function searchLocation()
         {
             const place = document.getElementById('place').value;
             const establishment = document.getElementById('establishment').value;
+            const resultsList = document.getElementById('results-items');
 
             if (!place) return alert('Please enter a location');
 
@@ -100,19 +133,33 @@
                 const lat = parseFloat(locationData[0].lat);
                 const lon = parseFloat(locationData[0].lon);
 
-                // Clear previous markers
+                // Clear previous markers and results
                 markersLayer.clearLayers();
+                resultsList.innerHTML = '';
+                markers = [];
 
                 // Search for establishments
                 const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${establishment}+in+${place}`;
                 const searchResponse = await fetch(searchUrl);
                 const searchData = await searchResponse.json();
 
-                // Add markers for each result
-                searchData.forEach(result =>
+                // Add markers and list items for each result
+                searchData.forEach((result, index) =>
                 {
+                    // Create marker
                     const marker = L.marker([result.lat, result.lon]).addTo(markersLayer);
                     marker.bindPopup(`<b>${result.display_name}</b>`);
+                    markers.push(marker);
+
+                    // Create list item
+                    const li = document.createElement('li');
+                    li.textContent = result.display_name;
+                    li.onclick = () =>
+                    {
+                        map.setView([result.lat, result.lon], 16);
+                        marker.openPopup();
+                    };
+                    resultsList.appendChild(li);
                 });
 
                 // Fit map to show all markers
@@ -124,6 +171,7 @@
                 {
                     // If no establishments found, center on the location
                     map.setView([lat, lon], 13);
+                    resultsList.innerHTML = '<li>No results found</li>';
                 }
             } catch (error)
             {
